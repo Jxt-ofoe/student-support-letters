@@ -1,7 +1,7 @@
 import { useState, useEffect, FormEvent } from "react";
 import { Letter } from "../types";
 import { motion, AnimatePresence } from "motion/react";
-import { Check, Trash2, Loader2, Lock, Unlock } from "lucide-react";
+import { Check, Trash2, Loader2, Lock, Unlock, Eye } from "lucide-react";
 
 export default function Admin() {
   const [pendingLetters, setPendingLetters] = useState<Letter[]>([]);
@@ -9,6 +9,18 @@ export default function Admin() {
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [totalVisits, setTotalVisits] = useState(0);
+
+  const fetchStats = async () => {
+    try {
+      const response = await fetch("/api/admin/stats");
+      if (!response.ok) throw new Error("Failed to fetch stats");
+      const data = await response.json();
+      setTotalVisits(data.totalVisits);
+    } catch (err) {
+      console.error("Error fetching stats:", err);
+    }
+  };
 
   const fetchPending = async () => {
     setLoading(true);
@@ -27,6 +39,7 @@ export default function Admin() {
   useEffect(() => {
     if (isAuthorized) {
       fetchPending();
+      fetchStats();
     }
   }, [isAuthorized]);
 
@@ -113,6 +126,16 @@ export default function Admin() {
           <Unlock className="w-4 h-4" />
           Lock Dashboard
         </button>
+      </div>
+
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-6 rounded-3xl border border-blue-200 shadow-sm mb-8">
+        <div className="flex items-center gap-3">
+          <Eye className="w-6 h-6 text-blue-600" />
+          <div>
+            <p className="text-xs font-bold text-blue-600 uppercase tracking-widest">Total App Visits</p>
+            <p className="text-4xl font-serif text-blue-900">{totalVisits}</p>
+          </div>
+        </div>
       </div>
 
       {loading ? (

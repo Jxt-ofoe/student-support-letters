@@ -23,6 +23,7 @@ async function initDb() {
   try {
     await turso.execute(`CREATE TABLE IF NOT EXISTS pending_letters (id TEXT PRIMARY KEY, letterText TEXT NOT NULL, nickname TEXT, createdAt DATETIME DEFAULT CURRENT_TIMESTAMP, status TEXT DEFAULT 'pending')`);
     await turso.execute(`CREATE TABLE IF NOT EXISTS approved_letters (id TEXT PRIMARY KEY, letterText TEXT NOT NULL, nickname TEXT, createdAt DATETIME, approvedAt DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+    await turso.execute(`CREATE TABLE IF NOT EXISTS app_visits (id TEXT PRIMARY KEY, visitedAt DATETIME DEFAULT CURRENT_TIMESTAMP, userAgent TEXT)`);
     console.log("DB Init Success");
   } catch (error) {
     console.error("DB Init Error:", error);
@@ -34,6 +35,20 @@ app.get("/api/health", async (req, res) => {
   try {
     await turso.execute("SELECT 1");
     res.json({ status: "ok" });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
+app.post("/api/visits", async (req, res) => {
+  try {
+    const id = nanoid();
+    const userAgent = req.headers["user-agent"] || "Unknown";
+    await turso.execute({
+      sql: "INSERT INTO app_visits (id, userAgent) VALUES (?, ?)",
+      args: [id, userAgent],
+    });
+    res.status(201).json({ success: true });
   } catch (err) {
     res.status(500).json({ error: (err as Error).message });
   }
@@ -63,6 +78,16 @@ app.post("/api/letters/pending", async (req, res) => {
 });
 
 // Admin Routes
+app.get("/api/admin/stats", async (req, res) => {
+  try {
+    const result = await turso.execute("SELECT COUNT(*) as total FROM app_visits");
+    const totalVisits = result.rows[0]?.total || 0;
+    res.json({ totalVisits });
+  } catch (err) {
+    res.status(500).json({ error: (err as Error).message });
+  }
+});
+
 app.get("/api/admin/pending", async (req, res) => {
   try {
     const result = await turso.execute("SELECT * FROM pending_letters ORDER BY createdAt DESC");
